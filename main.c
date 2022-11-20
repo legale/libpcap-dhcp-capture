@@ -67,8 +67,6 @@ typedef signed char nd_int8_t[1];
  * without express or implied warranty.
  */
 
-
-
 struct bootp {
 	nd_uint8_t	bp_op;		/* packet opcode type */
 	nd_uint8_t	bp_htype;	/* hardware addr type */
@@ -88,6 +86,17 @@ struct bootp {
 	nd_byte		bp_vend[64];	/* vendor-specific area */
 };
 
+
+/**
+ * 
+ * 
+ * 
+*/
+struct vlan_header
+{
+  uint16_t ether_type;		        /* packet type ID field	*/
+  uint16_t vlanid;		        /* packet type ID field	*/
+} __attribute__ ((__packed__));
 
 #define BOOTPREPLY	2
 #define BOOTPREQUEST	1
@@ -295,7 +304,23 @@ void my_packet_handler(
     const u_char *payload;
 
     /* Header lengths in bytes */
-    const int ethernet_h_len = 14; /* Doesn't change */
+    struct ether_header *eth_h = (struct ether_header *) p;
+    int ethernet_h_len = 14; /* depends on ethernet type */
+
+    /* if we have got 802.1Q frame */
+    uint16_t *ether_type = &eth_h->ether_type;
+    int cnt = 0;
+    while(ntohs(*ether_type) == ETHERTYPE_VLAN){
+        if(cnt++ > 2){
+            printf("error: vlan headers > 2\n");
+        }
+        struct vlan_header *vlan_h = eth_h;
+        printf("VLAN ID 0x%02X\n", ntohs(vlan_h->vlanid));
+        ethernet_h_len += 4; 
+        ether_type += 4;
+    }
+    printf("ether_type 0x%02X\n", ntohs(*ether_type));
+    
     int ip_h_len;
     int udp_len;
     const int udp_h_len = 8; /* fixed size 8 bytes */
