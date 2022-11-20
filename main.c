@@ -178,7 +178,7 @@ static bool matches(const char *prefix, const char *string) {
     return !*prefix;
 }
 
-void my_packet_handler(
+void dhcp_packet_handler(
     u_char *args,
     const struct pcap_pkthdr *header,
     const u_char *packet
@@ -287,12 +287,12 @@ int main(int argc, char *argv[]) {
 		return(2);
 	}
      
-    pcap_loop(handle, 0, my_packet_handler, NULL);
+    pcap_loop(handle, 0, dhcp_packet_handler, NULL);
 
     return 0;
 }
 
-void my_packet_handler(
+void dhcp_packet_handler(
     u_char *args,
     const struct pcap_pkthdr *h, /* header */
     const u_char *p /* packet body */
@@ -308,13 +308,13 @@ void my_packet_handler(
     int ethernet_h_len = 14; /* depends on ethernet type */
 
     /* if we have got 802.1Q frame */
-    uint16_t *ether_type = &eth_h->ether_type;
+    uint16_t *ether_type = (uint16_t *)&eth_h->ether_type;
     int cnt = 0;
     while(ntohs(*ether_type) == ETHERTYPE_VLAN){
         if(cnt++ > 2){
             printf("error: vlan headers > 2\n");
         }
-        struct vlan_header *vlan_h = eth_h;
+        struct vlan_header *vlan_h = (struct vlan_header *)eth_h;
         printf("VLAN ID 0x%02X\n", ntohs(vlan_h->vlanid));
         ethernet_h_len += 4; 
         ether_type += 4;
