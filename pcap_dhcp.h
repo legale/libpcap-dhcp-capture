@@ -97,6 +97,7 @@ struct tok {
 };
 
 
+pcap_t *dhcp_pcap_open_live(const char *device);
 
 const char *tok2str(const struct tok *lp, const char *fmt, const u_int v);
 

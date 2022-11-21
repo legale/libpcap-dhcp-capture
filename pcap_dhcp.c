@@ -152,3 +152,42 @@ void print_packet_info(const u_char *packet, struct pcap_pkthdr packet_h, const 
     printf("%s ip: %s\n", tok2str(bootp_op_values, "unknown (0x%02x)", *bootp->bp_op), inet_ntoa(*yi));
 
 }
+
+
+pcap_t *dhcp_pcap_open_live(const char *device){
+    char error_buffer[PCAP_ERRBUF_SIZE];
+    pcap_t *handle;
+    const int buf_size = 512; /* interested packet size range 292 - 512 */
+    int timeout_limit = 10000; /* In milliseconds */
+	struct bpf_program fp;		/* The compiled filter */
+	char filter_exp[] = "len >= 292 && !ip broadcast && udp && port 68";	/* The filter expression catch only dhcp ack from serv to cli                */
+    //bpf_u_int32 mask = 0;		/* Our netmask */
+	bpf_u_int32 net = 0;		/* Our IP */
+
+    /* Open device for live capture */
+    handle = pcap_open_live(
+            device,
+            buf_size, /* inplace BUFSIZ 8192 */
+            0,
+            timeout_limit,
+            error_buffer
+        );
+    if (handle == NULL) {
+         fprintf(stderr, "error: Could not open device %s: %s\n", device, error_buffer);
+         return NULL;
+     }
+
+     /* Compile and apply the filter */
+	if (pcap_compile(handle, &fp, filter_exp, 1, net) == -1) {
+		fprintf(stderr, "error: Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
+		pcap_close(handle);
+        return NULL;
+	}
+	if (pcap_setfilter(handle, &fp) == -1) {
+		fprintf(stderr, "error: Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
+		pcap_close(handle);
+        return NULL;
+	}
+
+    return handle;
+}
