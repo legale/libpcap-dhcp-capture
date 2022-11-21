@@ -17,8 +17,8 @@ CC = gcc -ggdb
 AR = ar
 
 #SRC=$(wildcard *.c)
-LIBNAME = pcap-dhcp
-SRC_LIB = main.c
+LIBNAME = pcap_dhcp
+SRC_LIB = pcap_dhcp.c
 SRC_BIN = main.c
 SRC = $(SRC_LIB) $(SRC_BIN)
 
