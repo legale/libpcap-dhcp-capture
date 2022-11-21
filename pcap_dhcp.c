@@ -55,14 +55,14 @@ void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const u_char
     int cnt = 0;
     while(ntohs(*ether_type) == ETHERTYPE_VLAN){
         if(cnt++ > 2){
-            printf("error: vlan headers > 2\n");
+            fprintf(stderr, "error: vlan headers > 2\n");
         }
         struct vlan_header *vlan_h = (struct vlan_header *)eth_h;
-        printf("VLAN ID 0x%02X\n", ntohs(vlan_h->vlanid));
+        fprintf(stderr, "VLAN ID 0x%04X\n", ntohs(vlan_h->vlanid));
         ethernet_h_len += 4; 
         ether_type += 4;
     }
-    printf("ether_type 0x%02X\n", ntohs(*ether_type));
+    fprintf(stderr, "ether_type 0x%04X\n", ntohs(*ether_type));
     
     int ip_h_len;
     int udp_len;
@@ -78,9 +78,9 @@ void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const u_char
     ip_h_len = ip_h_len * 4;
 
     int total_headers_size = ethernet_h_len + ip_h_len + udp_h_len;
-    printf("Size of all headers combined: %d bytes\n", total_headers_size);
+    fprintf(stderr, "Size of all headers combined: %d bytes\n", total_headers_size);
         if(total_headers_size > h->caplen){
-        printf("Total headers size (%d) > packet captured size (%d). Skipping...\n", total_headers_size, h->caplen);
+        fprintf(stderr, "Total headers size (%d) > packet captured size (%d). Skipping...\n", total_headers_size, h->caplen);
         return;
     }
 
@@ -90,7 +90,7 @@ void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const u_char
        Protocol is always the 10th byte of the IP header */
     u_char protocol = ip_h[9];
     if (protocol != IPPROTO_UDP) {
-        printf("%d Not a UDP packet. Skipping...\n", protocol);
+        fprintf(stderr, "%d Not a UDP packet. Skipping...\n", protocol);
         return;
     }
     
@@ -103,18 +103,18 @@ void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const u_char
     swap data bytes
     */
     udp_len = ntohs(*(uint16_t *)(udp_h + 4));
-    printf("UDP header + data length in bytes: %d\n", udp_len);
+    fprintf(stderr, "UDP header + data length in bytes: %d\n", udp_len);
 
     /* Find the payload offset */
     payload_len = h->caplen -
         (ethernet_h_len + ip_h_len + udp_h_len);
-    printf("Payload size: %d bytes\n", payload_len);
+    fprintf(stderr, "Payload size: %d bytes\n", payload_len);
     payload = p + total_headers_size;
     if(payload_len < sizeof(struct bootp)){
-        printf("payload size(%d) < bootp structure size(%lu). Skipping...\n", payload_len, sizeof(struct bootp));
+        fprintf(stderr, "payload size(%d) < bootp structure size(%lu). Skipping...\n", payload_len, sizeof(struct bootp));
         return;
     }
-    printf("Memory address where payload begins: %p\n", payload);
+    fprintf(stderr, "Memory address where payload begins: %p\n", payload);
 
 
     print_packet_info(p, *h, payload);
@@ -139,7 +139,7 @@ void print_packet_info(const u_char *packet, struct pcap_pkthdr packet_h, const 
     eth_h = (struct ether_header *) packet;
     u_char *src = eth_h->ether_shost;
     u_char *dst = eth_h->ether_dhost; 
-    printf("len/total: %d/%d s: %02X:%02X:%02X:%02X:%02X:%02X "
+    fprintf(stderr, "len/total: %d/%d s: %02X:%02X:%02X:%02X:%02X:%02X "
                             "d: %02X:%02X:%02X:%02X:%02X:%02X\n", 
         packet_h.caplen, 
         packet_h.len,
@@ -149,7 +149,7 @@ void print_packet_info(const u_char *packet, struct pcap_pkthdr packet_h, const 
     struct in_addr *yi = (struct in_addr *)&bootp->bp_yiaddr;
 
 
-    printf("%s ip: %s\n", tok2str(bootp_op_values, "unknown (0x%02x)", *bootp->bp_op), inet_ntoa(*yi));
+    fprintf(stderr, "%s ip: %s\n", tok2str(bootp_op_values, "unknown (0x%02x)", *bootp->bp_op), inet_ntoa(*yi));
 
 }
 
