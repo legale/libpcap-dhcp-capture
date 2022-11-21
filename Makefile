@@ -8,6 +8,7 @@ LDLIBS +=
 LDDIRS += -L$(BD)
 
 #Compiler flags
+#-w to remove all warnings
 CFLAGS += -Wall -O2
 I += -I./
 LIB += -lpcap
