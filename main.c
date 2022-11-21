@@ -1,10 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <pcap.h>
-#include <netinet/in.h>
-#include <netinet/if_ether.h>
-#include <arpa/inet.h>
 
 #include "pcap_dhcp.h"
 
