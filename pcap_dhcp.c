@@ -1,12 +1,6 @@
 #include "pcap_dhcp.h"
 
 
-static const struct tok bootp_op_values[] = {
-	{ BOOTPREQUEST,	"Request" },
-	{ BOOTPREPLY,	"Reply" },
-	{ 0, NULL}
-};
-
 /*
  * Convert a token value to a string; use "fmt" if not found.
  */
@@ -40,7 +34,8 @@ const char *tok2str(const struct tok *lp, const char *fmt, const u_int v){
 	return tok2strbuf(lp, fmt, v, ret, sizeof(buf[0]));
 }
 
-void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const u_char *p ){
+void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const u_char *p){
+
     /* Pointers to start point of various headers */
     const u_char *ip_h;
     const u_char *udp_h;
@@ -55,14 +50,14 @@ void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const u_char
     int cnt = 0;
     while(ntohs(*ether_type) == ETHERTYPE_VLAN){
         if(cnt++ > 2){
-            fprintf(stderr, "error: vlan headers > 2\n");
+            printf("error: vlan headers > 2\n");
         }
         struct vlan_header *vlan_h = (struct vlan_header *)eth_h;
-        fprintf(stderr, "VLAN ID 0x%04X\n", ntohs(vlan_h->vlanid));
+        printf("VLAN ID 0x%04X\n", ntohs(vlan_h->vlanid));
         ethernet_h_len += 4; 
         ether_type += 4;
     }
-    fprintf(stderr, "ether_type 0x%04X\n", ntohs(*ether_type));
+    printf("ether_type 0x%04X\n", ntohs(*ether_type));
     
     int ip_h_len;
     int udp_len;
@@ -78,9 +73,9 @@ void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const u_char
     ip_h_len = ip_h_len * 4;
 
     int total_headers_size = ethernet_h_len + ip_h_len + udp_h_len;
-    fprintf(stderr, "Size of all headers combined: %d bytes\n", total_headers_size);
+    printf("Size of all headers combined: %d bytes\n", total_headers_size);
         if(total_headers_size > h->caplen){
-        fprintf(stderr, "Total headers size (%d) > packet captured size (%d). Skipping...\n", total_headers_size, h->caplen);
+        printf("Total headers size (%d) > packet captured size (%d). Skipping...\n", total_headers_size, h->caplen);
         return;
     }
 
@@ -90,7 +85,7 @@ void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const u_char
        Protocol is always the 10th byte of the IP header */
     u_char protocol = ip_h[9];
     if (protocol != IPPROTO_UDP) {
-        fprintf(stderr, "%d Not a UDP packet. Skipping...\n", protocol);
+        printf("%d Not a UDP packet. Skipping...\n", protocol);
         return;
     }
     
@@ -103,54 +98,22 @@ void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const u_char
     swap data bytes
     */
     udp_len = ntohs(*(uint16_t *)(udp_h + 4));
-    fprintf(stderr, "UDP header + data length in bytes: %d\n", udp_len);
+    printf("UDP header + data length in bytes: %d\n", udp_len);
 
     /* Find the payload offset */
     payload_len = h->caplen -
         (ethernet_h_len + ip_h_len + udp_h_len);
-    fprintf(stderr, "Payload size: %d bytes\n", payload_len);
+    printf("Payload size: %d bytes\n", payload_len);
     payload = p + total_headers_size;
     if(payload_len < sizeof(struct bootp)){
-        fprintf(stderr, "payload size(%d) < bootp structure size(%lu). Skipping...\n", payload_len, sizeof(struct bootp));
+        printf("payload size(%d) < bootp structure size(%u). Skipping...\n", payload_len, (uint32_t)sizeof(struct bootp));
         return;
     }
-    fprintf(stderr, "Memory address where payload begins: %p\n", payload);
+    printf("Memory address where payload begins: %p\n", payload);
 
-
-    print_packet_info(p, *h, payload);
+    pcap_dhcp_user_s *user = (pcap_dhcp_user_s *)args;
+    (*user->callback)(p, *h, payload, user->callback_arg);
     return;
-}
-
-void print_packet_info(const u_char *packet, struct pcap_pkthdr packet_h, const u_char *payload) {
-    struct ether_header *eth_h;
-    struct bootp *bootp = (struct bootp *)payload;
-    /* check dhcp packet op code */
-    if(*bootp->bp_op != BOOTPREPLY){
-        return;
-    }
-
-    /* The packet is larger than the ether_header struct,
-       but we just want to look at the first part of the packet
-       that contains the header. We force the compiler
-       to treat the pointer to the packet as just a pointer
-       to the ether_header. The data payload of the packet comes
-       after the headers. Different packet types have different header
-       lengths though, but the ethernet header is always the same (14 bytes) */
-    eth_h = (struct ether_header *) packet;
-    u_char *src = eth_h->ether_shost;
-    u_char *dst = eth_h->ether_dhost; 
-    fprintf(stderr, "len/total: %d/%d s: %02X:%02X:%02X:%02X:%02X:%02X "
-                            "d: %02X:%02X:%02X:%02X:%02X:%02X\n", 
-        packet_h.caplen, 
-        packet_h.len,
-        src[0], src[1], src[2], src[3], src[4], src[5],
-        dst[0], dst[1], dst[2], dst[3], dst[4], dst[5]
-    );
-    struct in_addr *yi = (struct in_addr *)&bootp->bp_yiaddr;
-
-
-    fprintf(stderr, "%s ip: %s\n", tok2str(bootp_op_values, "unknown (0x%02x)", *bootp->bp_op), inet_ntoa(*yi));
-
 }
 
 
@@ -158,7 +121,7 @@ pcap_t *dhcp_pcap_open_live(const char *device){
     char error_buffer[PCAP_ERRBUF_SIZE];
     pcap_t *handle;
     const int buf_size = 512; /* interested packet size range 292 - 512 */
-    int timeout_limit = 10000; /* In milliseconds */
+    int timeout_limit = 5000; /* In milliseconds */
 	struct bpf_program fp;		/* The compiled filter */
 	char filter_exp[] = "len >= 292 && !ip broadcast && udp && port 68";	/* The filter expression catch only dhcp ack from serv to cli                */
     //bpf_u_int32 mask = 0;		/* Our netmask */
@@ -168,7 +131,7 @@ pcap_t *dhcp_pcap_open_live(const char *device){
     handle = pcap_open_live(
             device,
             buf_size, /* inplace BUFSIZ 8192 */
-            0,
+            1, /* promiscuous mode */
             timeout_limit,
             error_buffer
         );
@@ -176,6 +139,9 @@ pcap_t *dhcp_pcap_open_live(const char *device){
          fprintf(stderr, "error: Could not open device %s: %s\n", device, error_buffer);
          return NULL;
      }
+     //set nonblocking mode
+     pcap_setnonblock(handle, 1, error_buffer);
+
 
      /* Compile and apply the filter */
 	if (pcap_compile(handle, &fp, filter_exp, 1, net) == -1) {

@@ -4,9 +4,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <pcap.h>
+#include <netinet/in.h>
+#include <netinet/if_ether.h>
 #include <arpa/inet.h>
-#include <net/ethernet.h>
+#include <pcap.h>
 
 
 /*
@@ -90,18 +91,23 @@ struct vlan_header
 #define BOOTPREPLY	2
 #define BOOTPREQUEST	1
 #define TOKBUFSIZE 128
+
+
 struct tok {
 	u_int v;		/* value */
 	const char *s;		/* string */
 };
 
+typedef struct pcap_dhcp_user {
+	void (*callback)(); /* user callback function which called by dhcp_packet_handler */
+	void *callback_arg; /* callback_arg */
+} pcap_dhcp_user_s;
 
 pcap_t *dhcp_pcap_open_live(const char *device);
 
 const char *tok2str(const struct tok *lp, const char *fmt, const u_int v);
 
-void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const u_char *p );
+void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const u_char *p);
 
-void print_packet_info(const u_char *packet, struct pcap_pkthdr packet_h, const u_char *payload);
 
 #endif	/* pcap_dhcp.h */
