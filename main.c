@@ -68,13 +68,16 @@ static void print_packet_info(const u_char *packet, struct pcap_pkthdr packet_h,
        lengths though, but the ethernet header is always the same (14 bytes) */
     eth_h = (struct ether_header *) packet;
     u_char *src = eth_h->ether_shost;
-    u_char *dst = eth_h->ether_dhost; 
-    printf("len/total: %d/%d s: %02X:%02X:%02X:%02X:%02X:%02X "
-                            "d: %02X:%02X:%02X:%02X:%02X:%02X\n", 
+    u_char *dst = eth_h->ether_dhost;
+    u_char *cli = bootp->bp_chaddr; 
+    printf("len/total: %d/%d src: %02X:%02X:%02X:%02X:%02X:%02X "
+                            "dst: %02X:%02X:%02X:%02X:%02X:%02X "
+                            "cli: %02X:%02X:%02X:%02X:%02X:%02X\n", 
         packet_h.caplen, 
         packet_h.len,
         src[0], src[1], src[2], src[3], src[4], src[5],
-        dst[0], dst[1], dst[2], dst[3], dst[4], dst[5]
+        dst[0], dst[1], dst[2], dst[3], dst[4], dst[5],
+        cli[0], cli[1], cli[2], cli[3], cli[4], cli[5]
     );
     struct in_addr *yi = (struct in_addr *)&bootp->bp_yiaddr;
 
