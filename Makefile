@@ -27,7 +27,7 @@ all: $(NAME) static shared
 
 $(NAME): $(SRC)
 		mkdir -p build
-		$(CC) $(CFLAGS) $(I) $(LDDIRS) $(LDLIBS) $(LIB) $^ -o build/$(NAME)
+		$(CC) $(CFLAGS) $(I) $(LDDIRS) $(LDLIBS) $^ -o build/$(NAME) $(LIB)
 
 staticlib:
 		$(CC) $(CFLAGS) $(I) $(LDDIRS) $(LDLIBS) $(SRC_LIB) -c -o $(BD)/lib$(LIBNAME).a

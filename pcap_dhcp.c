@@ -125,7 +125,7 @@ pcap_t *dhcp_pcap_open_live(const char *device){
     const int buf_size = 512; /* interested packet size range 292 - 512 */
     int timeout_limit = 5000; /* In milliseconds */
 	struct bpf_program fp;		/* The compiled filter */
-	char filter_exp[] = "len >= 292 && !ip broadcast && udp && port 68";	/* The filter expression catch only dhcp ack from serv to cli                */
+	char filter_exp[] = "len >= 292 && udp && port 68";	/* The filter expression catch only dhcp ack from serv to cli                */
     //bpf_u_int32 mask = 0;		/* Our netmask */
 	bpf_u_int32 net = 0;		/* Our IP */
 
