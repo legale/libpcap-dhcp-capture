@@ -64,7 +64,7 @@ void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const u_char
     int ip_h_len;
     int udp_len;
     const int udp_h_len = 8; /* fixed size 8 bytes */
-    int payload_len;
+    size_t payload_len;
 
 
     /* Find start of IP header */
@@ -74,7 +74,7 @@ void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const u_char
     ip_h_len = ((*ip_h) & 0x0F);
     ip_h_len = ip_h_len * 4;
 
-    int total_headers_size = ethernet_h_len + ip_h_len + udp_h_len;
+    uint32_t total_headers_size = ethernet_h_len + ip_h_len + udp_h_len;
     syslog(LOG_DEBUG, "Size of all headers combined: %d bytes\n", total_headers_size);
         if(total_headers_size > h->caplen){
         syslog(LOG_DEBUG, "Total headers size (%d) > packet captured size (%d). Skipping...\n", total_headers_size, h->caplen);
@@ -105,10 +105,10 @@ void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const u_char
     /* Find the payload offset */
     payload_len = h->caplen -
         (ethernet_h_len + ip_h_len + udp_h_len);
-    syslog(LOG_DEBUG, "Payload size: %d bytes\n", payload_len);
+    syslog(LOG_DEBUG, "Payload size: %zu bytes\n", payload_len);
     payload = p + total_headers_size;
     if(payload_len < sizeof(struct bootp)){
-        syslog(LOG_DEBUG, "payload size(%d) < bootp structure size(%u). Skipping...\n", payload_len, (uint32_t)sizeof(struct bootp));
+        syslog(LOG_DEBUG, "payload size(%zu) < bootp structure size(%u). Skipping...\n", payload_len, (uint32_t)sizeof(struct bootp));
         return;
     }
     syslog(LOG_DEBUG, "Memory address where payload begins: %p\n", payload);
