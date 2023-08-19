@@ -50,7 +50,7 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
   int cnt = 0;
   while (ntohs(*ether_type) == ETHERTYPE_VLAN) {
     if (cnt++ > 2) {
-      syslog(LOG_DEBUG, "error: vlan headers > 2\n");
+      syslog(LOG_WARNING, "warning: vlan headers > 2\n");
     }
     struct vlan_header *vlan_h = (struct vlan_header *)eth_h;
     syslog(LOG_DEBUG, "VLAN ID 0x%04X\n", ntohs(vlan_h->vlanid));
