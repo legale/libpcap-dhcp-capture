@@ -1,6 +1,10 @@
 #include "pcap_dhcp.h"
 #include <syslog.h>
 
+#include "syslog.h"
+
+#include "leak_detector_c.h"
+
 /*
  * Convert a token value to a string; use "fmt" if not found.
  */
@@ -46,11 +50,13 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
   int ethernet_h_len = 14; /* depends on ethernet type */
 
   /* if we have got 802.1Q frame */
-  uint16_t *ether_type = (uint16_t *)&eth_h->ether_type;
+  uint16_t ether_type_ = eth_h->ether_type;
+  uint16_t *ether_type = &ether_type_;
+
   int cnt = 0;
   while (ntohs(*ether_type) == ETHERTYPE_VLAN) {
     if (cnt++ > 2) {
-      syslog(LOG_WARNING, "warning: vlan headers > 2\n");
+      syslog2(LOG_WARNING, "vlan headers > 2\n");
     }
     struct vlan_header *vlan_h = (struct vlan_header *)eth_h;
     syslog(LOG_DEBUG, "VLAN ID 0x%04X\n", ntohs(vlan_h->vlanid));

@@ -1,46 +1,58 @@
-#name of output file
-NAME = pcap
-#build dir
+# Name of output file
+NAME = dhcp
+# Build dir
 BD = ./build
 
-#Linker flags
-LDLIBS +=
+# Linker flags
+LDLIBS += -lpcap
 LDDIRS += -L$(BD)
 
-#Compiler flags
-#-w to remove all warnings
-CFLAGS += -Wall -Wextra -Wno-unused-parameter -O3
-I += -I./
-LIB += -lpcap
+# Compiler flags
+CFLAGS += -Wall -Wextra -O2 -Wno-unused-parameter
+ifdef LEAKCHECK
+CFLAGS += -DLEAKCHECK
+endif
+I += -I./usr/include
 
-#Compiler
-CC = gcc -ggdb
+# Compiler
+CC = gcc
 AR = ar
 
-#SRC=$(wildcard *.c)
+# SRC=$(wildcard *.c)
 LIBNAME = pcap_dhcp
-SRC_LIB = pcap_dhcp.c
+SRC_LIB = pcap_dhcp.c syslog.c 
 SRC_BIN = main.c
-SRC = $(SRC_LIB) $(SRC_BIN)
+ifdef LEAKCHECK
+SRC_BIN += leak_detector_c.c 
+endif
+OBJ_LIB = $(patsubst %.c, $(BD)/%.o, $(SRC_LIB))
+OBJ_LIB_PIC = $(patsubst %.c, $(BD)/%.pic.o, $(SRC_LIB))
+OBJ_BIN = $(patsubst %.c, $(BD)/%.o, $(SRC_BIN))
 
-all: $(NAME) static shared
+all: $(NAME)
 
-$(NAME): $(SRC)
-		mkdir -p build
-		$(CC) $(CFLAGS) $(I) $(LDDIRS) $(LDLIBS) $^ -o build/$(NAME) $(LIB)
+$(NAME): $(BD)/lib$(LIBNAME).a $(BD)/$(NAME)_shared $(BD)/$(NAME)_static
+# Combine additional compilation steps here if needed
+# ...
 
-staticlib:
-		$(CC) $(CFLAGS) $(I) $(LDDIRS) $(LDLIBS) $(SRC_LIB) -c -o $(BD)/lib$(LIBNAME).a
-		#$(AR) rcs build/lib$(LIBNAME).a build/lib$(LIBNAME).o
+$(BD)/lib$(LIBNAME).a: $(OBJ_LIB)
+	$(AR) rcs $@ $^
 
-sharedlib:
-		$(CC) $(CFLAGS) $(I) $(LDDIRS) $(LDLIBS) $(SRC_LIB) -shared -fPIC -o $(BD)/lib$(LIBNAME).so
+$(BD)/$(NAME)_shared: $(OBJ_BIN) $(BD)/lib$(LIBNAME).so
+	$(CC) $(CFLAGS) $(I) $(LDDIRS) $^ -o $@ $(LDLIBS)
 
-shared: sharedlib
-		$(CC) $(CFLAGS) $(I) $(LDDIRS) $(LDLIBS) $(SRC_BIN) -L./build -Wl,-Bdynamic -l$(LIBNAME) $(LIB) -o $(BD)/$(NAME)_shared
+$(BD)/$(NAME)_static: $(OBJ_BIN) $(BD)/lib$(LIBNAME).a
+	$(CC) $(CFLAGS) $(I) $(LDDIRS) -Wl,-Bstatic -l$(LIBNAME) -Wl,-Bdynamic $^ -o $@ $(LDLIBS)
 
-static: staticlib
-		$(CC) $(CFLAGS) $(I) $(LDDIRS) $(LDDIRS) $(SRC_BIN) -Wl,-Bstatic -l$(LIBNAME) $(LIB) -Wl,-Bdynamic -o $(BD)/$(NAME)_static
+$(BD)/%.o: %.c
+	$(CC) $(CFLAGS) $(I) -c $< -o $@
+
+# for shared library with -fPIC
+$(BD)/%.pic.o: %.c
+	$(CC) $(CFLAGS) $(I) -c $< -o $@ -fPIC
+
+$(BD)/lib$(LIBNAME).so: $(OBJ_LIB_PIC)
+	$(CC) $(CFLAGS) $(I) $(LDDIRS) $^ -shared -fPIC -o $@ $(LDLIBS)
 
 clean:
-		rm -rf $(BD)/*
+	rm -rf $(BD)/*
