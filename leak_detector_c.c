@@ -22,11 +22,11 @@ static inline void __add_memleak_list(MEMLEAK *new, MEMLEAK *prev, MEMLEAK *next
     prev->next = new;
 }
 
-static inline void add_memleak_list_tail(MEMLEAK *new, MEMLEAK *head) {
+static inline void memleak_add_list_tail(MEMLEAK *new, MEMLEAK *head) {
     __add_memleak_list(new, head->prev, head);
 }
 
-static inline void ht_list_add(MEMLEAK *new, MEMLEAK *head) {
+static inline void memleak_list_add(MEMLEAK *new, MEMLEAK *head) {
     __add_memleak_list(new, head, head->next);
 }
 
@@ -59,7 +59,7 @@ static void add(MEM_INFO alloc_info){
 		memleak_flag = 1;
 	}
 	
-	add_memleak_list_tail(new, head);	
+	memleak_add_list_tail(new, head);	
 }
 
 /*

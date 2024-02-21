@@ -42,7 +42,7 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
 
   /* Pointers to start point of various headers */
   const u_char *ip_h;
-  const u_char *udp_h;
+  //const u_char *udp_h; //for debug
   const u_char *payload;
 
   /* Header lengths in bytes */
@@ -50,15 +50,14 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
   int ethernet_h_len = 14; /* depends on ethernet type */
 
   /* if we have got 802.1Q frame */
-  uint16_t ether_type_ = eth_h->ether_type;
-  uint16_t *ether_type = &ether_type_;
+	char *ether_type = (char *)&eth_h->ether_type;
 
   int cnt = 0;
-  while (ntohs(*ether_type) == ETHERTYPE_VLAN) {
+  while (ntohs(*(uint16_t *)ether_type) == ETHERTYPE_VLAN) {
     if (cnt++ > 2) {
-      //syslog2(LOG_DEBUG, "vlan headers > 2\n");
+      syslog2(LOG_DEBUG, "vlan headers > 2\n");
     }
-    struct vlan_header *vlan_h = (struct vlan_header *)eth_h;
+    //struct vlan_header *vlan_h = (struct vlan_header *)eth_h;
     //syslog2(LOG_DEBUG, "VLAN ID 0x%04X\n", ntohs(vlan_h->vlanid));
     ethernet_h_len += 4;
     ether_type += 4;
@@ -66,7 +65,7 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
   //syslog2(LOG_DEBUG, "ether_type 0x%04X\n", ntohs(*ether_type));
 
   int ip_h_len;
-  int udp_len;
+  //int udp_len; //for debug
   const int udp_h_len = 8; /* fixed size 8 bytes */
   size_t payload_len;
 
@@ -82,7 +81,7 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
   if (total_headers_size > h->caplen) {
     //syslog2(LOG_DEBUG, "Total headers size (%d) > packet captured size (%d). Skipping...\n", total_headers_size, h->caplen);
     return;
-  }
+  }	
 
   /* Now that we know where the IP header is, we can
      inspect the IP header for a protocol number to
@@ -96,13 +95,15 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
 
   /* Add the ethernet and ip header length to the start of the packet
      to find the beginning of the UDP header */
-  udp_h = p + ethernet_h_len + ip_h_len;
+  //this is for debug
+	//udp_h = p + ethernet_h_len + ip_h_len;
   /* The UDP header length is fixed size 8 bytes. Structure:
   | src port 2B | dst port 2B | len 2B | checksum 2B |
   packet data is little endian (aka network order), so for big endian system we need to
   swap data bytes
   */
-  udp_len = ntohs(*(uint16_t *)(udp_h + 4));
+  
+	//udp_len = ntohs(*(uint16_t *)(udp_h + 4));
   //syslog2(LOG_DEBUG, "UDP header + data length in bytes: %d\n", udp_len);
 
   /* Find the payload offset */
@@ -169,7 +170,7 @@ static const uint8_t vm_rfc1048[4] = VM_RFC1048;
 
 const char *parse_vendor_specific_option_12(const nd_byte *vend_data, size_t vend_len) {
   size_t index = 0;
-  if (memcmp((const char *)vend_data, vm_rfc1048, sizeof(uint32_t)) != 0) {
+  if (memcmp((const char *)vend_data, vm_rfc1048, sizeof(int)) != 0) {
     perror("Vendor Magic Cookie not found");
     return NULL;
   }
