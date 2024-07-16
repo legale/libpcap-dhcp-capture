@@ -42,7 +42,7 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
 
   /* Pointers to start point of various headers */
   const u_char *ip_h;
-  //const u_char *udp_h; //for debug
+  // const u_char *udp_h; //for debug
   const u_char *payload;
 
   /* Header lengths in bytes */
@@ -50,22 +50,22 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
   int ethernet_h_len = 14; /* depends on ethernet type */
 
   /* if we have got 802.1Q frame */
-	char *ether_type = (char *)&eth_h->ether_type;
+  char *ether_type = (char *)&eth_h->ether_type;
 
   int cnt = 0;
   while (ntohs(*(uint16_t *)ether_type) == ETHERTYPE_VLAN) {
     if (cnt++ > 2) {
       syslog2(LOG_DEBUG, "vlan headers > 2\n");
     }
-    //struct vlan_header *vlan_h = (struct vlan_header *)eth_h;
-    //syslog2(LOG_DEBUG, "VLAN ID 0x%04X\n", ntohs(vlan_h->vlanid));
+    // struct vlan_header *vlan_h = (struct vlan_header *)eth_h;
+    // syslog2(LOG_DEBUG, "VLAN ID 0x%04X\n", ntohs(vlan_h->vlanid));
     ethernet_h_len += 4;
     ether_type += 4;
   }
-  //syslog2(LOG_DEBUG, "ether_type 0x%04X\n", ntohs(*ether_type));
+  // syslog2(LOG_DEBUG, "ether_type 0x%04X\n", ntohs(*ether_type));
 
   int ip_h_len;
-  //int udp_len; //for debug
+  // int udp_len; //for debug
   const int udp_h_len = 8; /* fixed size 8 bytes */
   size_t payload_len;
 
@@ -77,11 +77,11 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
   ip_h_len = ip_h_len * 4;
 
   uint32_t total_headers_size = ethernet_h_len + ip_h_len + udp_h_len;
-  //syslog2(LOG_DEBUG, "Size of all headers combined: %d bytes\n", total_headers_size);
+  // syslog2(LOG_DEBUG, "Size of all headers combined: %d bytes\n", total_headers_size);
   if (total_headers_size > h->caplen) {
-    //syslog2(LOG_DEBUG, "Total headers size (%d) > packet captured size (%d). Skipping...\n", total_headers_size, h->caplen);
+    // syslog2(LOG_DEBUG, "Total headers size (%d) > packet captured size (%d). Skipping...\n", total_headers_size, h->caplen);
     return;
-  }	
+  }
 
   /* Now that we know where the IP header is, we can
      inspect the IP header for a protocol number to
@@ -89,30 +89,30 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
      Protocol is always the 10th byte of the IP header */
   u_char protocol = ip_h[9];
   if (protocol != IPPROTO_UDP) {
-    //syslog2(LOG_DEBUG, "%d Not a UDP packet. Skipping...\n", protocol);
+    // syslog2(LOG_DEBUG, "%d Not a UDP packet. Skipping...\n", protocol);
     return;
   }
 
   /* Add the ethernet and ip header length to the start of the packet
      to find the beginning of the UDP header */
-  //this is for debug
-	//udp_h = p + ethernet_h_len + ip_h_len;
+  // this is for debug
+  // udp_h = p + ethernet_h_len + ip_h_len;
   /* The UDP header length is fixed size 8 bytes. Structure:
   | src port 2B | dst port 2B | len 2B | checksum 2B |
   packet data is little endian (aka network order), so for big endian system we need to
   swap data bytes
   */
-  
-	//udp_len = ntohs(*(uint16_t *)(udp_h + 4));
-  //syslog2(LOG_DEBUG, "UDP header + data length in bytes: %d\n", udp_len);
+
+  // udp_len = ntohs(*(uint16_t *)(udp_h + 4));
+  // syslog2(LOG_DEBUG, "UDP header + data length in bytes: %d\n", udp_len);
 
   /* Find the payload offset */
   payload_len = h->caplen -
                 (ethernet_h_len + ip_h_len + udp_h_len);
-  //syslog2(LOG_DEBUG, "Payload size: %zu bytes\n", payload_len);
+  // syslog2(LOG_DEBUG, "Payload size: %zu bytes\n", payload_len);
   payload = p + total_headers_size;
   if (payload_len < sizeof(struct bootp)) {
-    //syslog2(LOG_DEBUG, "payload size(%zu) < bootp structure size(%u). Skipping...\n", payload_len, (uint32_t)sizeof(struct bootp));
+    // syslog2(LOG_DEBUG, "payload size(%zu) < bootp structure size(%u). Skipping...\n", payload_len, (uint32_t)sizeof(struct bootp));
     return;
   }
   syslog2(LOG_DEBUG, "Memory address where payload begins: %p\n", payload);
@@ -126,24 +126,66 @@ pcap_t *dhcp_pcap_open_live(const char *device) {
   char error_buffer[PCAP_ERRBUF_SIZE];
   pcap_t *handle;
   const int buf_size = 512;                             /* interested packet size range 292 - 512 */
-  int timeout_limit = 5000;                             /* In milliseconds */
+  int timeout_limit = 1000;                             /* In milliseconds */
   struct bpf_program fp;                                /* The compiled filter */
   char filter_exp[] = "len >= 292 && udp && (port 67)"; /* The filter expression to catch bootp packets */
   bpf_u_int32 net = 0;                                  /* Our netmask */
 
-  /* Open device for live capture */
-  handle = pcap_open_live(
-      device,
-      buf_size, /* inplace BUFSIZ 8192 */
-      1,        /* promiscuous mode */
-      timeout_limit,
-      error_buffer);
+  /* Create pcap handle */
+  handle = pcap_create(device, error_buffer);
   if (handle == NULL) {
-    syslog2(LOG_CRIT, "error: Could not open device %s: %s\n", device, error_buffer);
+    syslog2(LOG_CRIT, "error: Could not create pcap handle for device %s: %s\n", device, error_buffer);
     return NULL;
   }
-  // set nonblocking mode
-  pcap_setnonblock(handle, 1, error_buffer);
+
+  /* Set snapshot length */
+  if (pcap_set_snaplen(handle, buf_size) != 0) {
+    syslog2(LOG_CRIT, "error: Could not set snapshot length for device %s: %s\n", device, pcap_geterr(handle));
+    pcap_close(handle);
+    return NULL;
+  }
+
+  /* Set promiscuous mode */
+  if (pcap_set_promisc(handle, 1) != 0) {
+    syslog2(LOG_CRIT, "error: Could not set promiscuous mode for device %s: %s\n", device, pcap_geterr(handle));
+    pcap_close(handle);
+    return NULL;
+  }
+
+  /* Set read timeout */
+  if (pcap_set_timeout(handle, timeout_limit) != 0) {
+    syslog2(LOG_CRIT, "error: Could not set timeout for device %s: %s\n", device, pcap_geterr(handle));
+    pcap_close(handle);
+    return NULL;
+  }
+
+  /* Set buffer size for DHCP packets */
+  if (pcap_set_buffer_size(handle, 1024) != 0) {
+    syslog2(LOG_ALERT, "Unable to set buffer size for %s\n", device);
+    pcap_close(handle);
+    return NULL;
+  }
+  //this mode is not working error: can't mmap rx ring: Invalid argument
+  // /* Set immediate mode */
+  // if (pcap_set_immediate_mode(handle, 1) != 0) {
+  //   syslog2(LOG_ALERT, "Unable to set immediate mode for %s\n", device);
+  //   pcap_close(handle);
+  //   return NULL;
+  // }
+
+  /* Activate the pcap handle */
+  if (pcap_activate(handle) != 0) {
+    syslog2(LOG_CRIT, "error: Could not activate pcap handle for device %s: %s\n", device, pcap_geterr(handle));
+    pcap_close(handle);
+    return NULL;
+  }
+
+  // Set non-blocking mode
+  if (pcap_setnonblock(handle, 1, error_buffer) == -1) {
+    syslog2(LOG_CRIT, "error: Could not set non-blocking mode for device %s: %s\n", device, error_buffer);
+    pcap_close(handle);
+    return NULL;
+  }
 
   /* Compile and apply the filter */
   if (pcap_compile(handle, &fp, filter_exp, 1, net) == -1) {
