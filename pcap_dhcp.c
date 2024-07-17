@@ -125,7 +125,7 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
 pcap_t *dhcp_pcap_open_live(const char *device) {
   char error_buffer[PCAP_ERRBUF_SIZE];
   pcap_t *handle;
-  const int buf_size = 512;                             /* interested packet size range 292 - 512 */
+  const int buf_size = 1024;                             /* interested packet size range 292 - 512 */
   int timeout_limit = 1000;                             /* In milliseconds */
   struct bpf_program fp;                                /* The compiled filter */
   char filter_exp[] = "len >= 292 && udp && (port 67)"; /* The filter expression to catch bootp packets */
@@ -160,7 +160,7 @@ pcap_t *dhcp_pcap_open_live(const char *device) {
   }
 
   /* Set buffer size for DHCP packets */
-  if (pcap_set_buffer_size(handle, 1024) != 0) {
+  if (pcap_set_buffer_size(handle, buf_size) != 0) {
     syslog2(LOG_ALERT, "Unable to set buffer size for %s\n", device);
     pcap_close(handle);
     return NULL;
