@@ -125,7 +125,7 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
 pcap_t *dhcp_pcap_open_live(const char *device) {
   char error_buffer[PCAP_ERRBUF_SIZE];
   pcap_t *handle;
-  const int buf_size = 1024;                             /* interested packet size range 292 - 512 */
+  const int buf_size = 2048;                             /* interested packet size range 292 - 512 */
   int timeout_limit = 1000;                             /* In milliseconds */
   struct bpf_program fp;                                /* The compiled filter */
   char filter_exp[] = "len >= 292 && udp && (port 67)"; /* The filter expression to catch bootp packets */
@@ -159,30 +159,33 @@ pcap_t *dhcp_pcap_open_live(const char *device) {
     return NULL;
   }
 
-  /* Set buffer size for DHCP packets */
-  if (pcap_set_buffer_size(handle, buf_size) != 0) {
+  // /* Set buffer size for DHCP packets */
+  if (pcap_set_buffer_size(handle, 32 * 1024) != 0) {
     syslog2(LOG_ALERT, "Unable to set buffer size for %s\n", device);
     pcap_close(handle);
     return NULL;
   }
-  //this mode is not working error: can't mmap rx ring: Invalid argument
-  // /* Set immediate mode */
-  // if (pcap_set_immediate_mode(handle, 1) != 0) {
-  //   syslog2(LOG_ALERT, "Unable to set immediate mode for %s\n", device);
-  //   pcap_close(handle);
-  //   return NULL;
-  // }
 
-  /* Activate the pcap handle */
-  if (pcap_activate(handle) != 0) {
-    syslog2(LOG_CRIT, "error: Could not activate pcap handle for device %s: %s\n", device, pcap_geterr(handle));
+  //this mode is not working with small buffer size error: can't mmap rx ring: Invalid argument
+  /* Set immediate mode */
+  if (pcap_set_immediate_mode(handle, 1) != 0) {
+    syslog2(LOG_ALERT, "Unable to set immediate mode for %s\n", device);
     pcap_close(handle);
     return NULL;
   }
 
+
+
   // Set non-blocking mode
   if (pcap_setnonblock(handle, 1, error_buffer) == -1) {
     syslog2(LOG_CRIT, "error: Could not set non-blocking mode for device %s: %s\n", device, error_buffer);
+    pcap_close(handle);
+    return NULL;
+  }
+
+  /* Activate the pcap handle */
+  if (pcap_activate(handle) != 0) {
+    syslog2(LOG_CRIT, "error: Could not activate pcap handle for device %s: %s\n", device, pcap_geterr(handle));
     pcap_close(handle);
     return NULL;
   }
@@ -193,11 +196,14 @@ pcap_t *dhcp_pcap_open_live(const char *device) {
     pcap_close(handle);
     return NULL;
   }
+
   if (pcap_setfilter(handle, &fp) == -1) {
     syslog2(LOG_CRIT, "error: Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
     pcap_close(handle);
     return NULL;
   }
+
+
 
   return handle;
 }
