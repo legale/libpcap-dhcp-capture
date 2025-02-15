@@ -108,6 +108,6 @@ pcap_t *dhcp_pcap_open_live(const char *device);
 const char *tok2str(const struct tok *lp, const char *fmt, const u_int v);
 
 void dhcp_packet_handler(u_char *args, const struct pcap_pkthdr *h, const uint8_t *p);
-const char *parse_vendor_specific_option_12(const nd_byte *vend_data, size_t vend_len);
+char *parse_vendor_specific_option_12(const nd_byte *vend_data, size_t vend_len);
 size_t calc_vendor_specific_size(struct bootp *sample);
 #endif /* pcap_dhcp.h */

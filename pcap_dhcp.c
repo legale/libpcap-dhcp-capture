@@ -216,7 +216,7 @@ pcap_t *dhcp_pcap_open_live(const char *device) {
 
 static const uint8_t vm_rfc1048[4] = VM_RFC1048;
 
-const char *parse_vendor_specific_option_12(const nd_byte *vend_data, size_t vend_len) {
+char *parse_vendor_specific_option_12(const nd_byte *vend_data, size_t vend_len) {
   size_t index = 0;
   if (memcmp((const char *)vend_data, vm_rfc1048, sizeof(int)) != 0) {
     perror("Vendor Magic Cookie not found");
