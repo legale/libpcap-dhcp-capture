@@ -55,14 +55,14 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
   int cnt = 0;
   while (ntohs(*(uint16_t *)ether_type) == ETHERTYPE_VLAN) {
     if (cnt++ > 2) {
-      syslog2(LOG_DEBUG, "vlan headers > 2\n");
+      syslog2(LOG_DEBUG, "vlan headers > 2");
     }
     // struct vlan_header *vlan_h = (struct vlan_header *)eth_h;
-    // syslog2(LOG_DEBUG, "VLAN ID 0x%04X\n", ntohs(vlan_h->vlanid));
+    // syslog2(LOG_DEBUG, "VLAN ID 0x%04X", ntohs(vlan_h->vlanid));
     ethernet_h_len += 4;
     ether_type += 4;
   }
-  // syslog2(LOG_DEBUG, "ether_type 0x%04X\n", ntohs(*ether_type));
+  // syslog2(LOG_DEBUG, "ether_type 0x%04X", ntohs(*ether_type));
 
   int ip_h_len;
   // int udp_len; //for debug
@@ -77,9 +77,9 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
   ip_h_len = ip_h_len * 4;
 
   uint32_t total_headers_size = ethernet_h_len + ip_h_len + udp_h_len;
-  // syslog2(LOG_DEBUG, "Size of all headers combined: %d bytes\n", total_headers_size);
+  // syslog2(LOG_DEBUG, "Size of all headers combined: %d bytes", total_headers_size);
   if (total_headers_size > h->caplen) {
-    // syslog2(LOG_DEBUG, "Total headers size (%d) > packet captured size (%d). Skipping...\n", total_headers_size, h->caplen);
+    // syslog2(LOG_DEBUG, "Total headers size (%d) > packet captured size (%d). Skipping...", total_headers_size, h->caplen);
     return;
   }
 
@@ -89,7 +89,7 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
      Protocol is always the 10th byte of the IP header */
   u_char protocol = ip_h[9];
   if (protocol != IPPROTO_UDP) {
-    // syslog2(LOG_DEBUG, "%d Not a UDP packet. Skipping...\n", protocol);
+    // syslog2(LOG_DEBUG, "%d Not a UDP packet. Skipping...", protocol);
     return;
   }
 
@@ -104,18 +104,18 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
   */
 
   // udp_len = ntohs(*(uint16_t *)(udp_h + 4));
-  // syslog2(LOG_DEBUG, "UDP header + data length in bytes: %d\n", udp_len);
+  // syslog2(LOG_DEBUG, "UDP header + data length in bytes: %d", udp_len);
 
   /* Find the payload offset */
   payload_len = h->caplen -
                 (ethernet_h_len + ip_h_len + udp_h_len);
-  // syslog2(LOG_DEBUG, "Payload size: %zu bytes\n", payload_len);
+  // syslog2(LOG_DEBUG, "Payload size: %zu bytes", payload_len);
   payload = p + total_headers_size;
   if (payload_len < sizeof(struct bootp)) {
-    // syslog2(LOG_DEBUG, "payload size(%zu) < bootp structure size(%u). Skipping...\n", payload_len, (uint32_t)sizeof(struct bootp));
+    // syslog2(LOG_DEBUG, "payload size(%zu) < bootp structure size(%u). Skipping...", payload_len, (uint32_t)sizeof(struct bootp));
     return;
   }
-  syslog2(LOG_DEBUG, "Memory address where payload begins: %p\n", payload);
+  syslog2(LOG_DEBUG, "Memory address where payload begins: %p", payload);
 
   pcap_dhcp_user_s *user = (pcap_dhcp_user_s *)args;
   (*user->callback)(p, *h, payload, user->callback_arg);
@@ -134,34 +134,34 @@ pcap_t *dhcp_pcap_open_live(const char *device) {
   /* Create pcap handle */
   handle = pcap_create(device, error_buffer);
   if (handle == NULL) {
-    syslog2(LOG_CRIT, "error: Could not create pcap handle for device %s: %s\n", device, error_buffer);
+    syslog2(LOG_CRIT, "error: Could not create pcap handle for device %s: %s", device, error_buffer);
     return NULL;
   }
 
   /* Set snapshot length */
   if (pcap_set_snaplen(handle, buf_size) != 0) {
-    syslog2(LOG_CRIT, "error: Could not set snapshot length for device %s: %s\n", device, pcap_geterr(handle));
+    syslog2(LOG_CRIT, "error: Could not set snapshot length for device %s: %s", device, pcap_geterr(handle));
     pcap_close(handle);
     return NULL;
   }
 
   /* Set promiscuous mode */
   if (pcap_set_promisc(handle, 1) != 0) {
-    syslog2(LOG_CRIT, "error: Could not set promiscuous mode for device %s: %s\n", device, pcap_geterr(handle));
+    syslog2(LOG_CRIT, "error: Could not set promiscuous mode for device %s: %s", device, pcap_geterr(handle));
     pcap_close(handle);
     return NULL;
   }
 
   /* Set read timeout */
   if (pcap_set_timeout(handle, timeout_limit) != 0) {
-    syslog2(LOG_CRIT, "error: Could not set timeout for device %s: %s\n", device, pcap_geterr(handle));
+    syslog2(LOG_CRIT, "error: Could not set timeout for device %s: %s", device, pcap_geterr(handle));
     pcap_close(handle);
     return NULL;
   }
 
   // /* Set buffer size for DHCP packets */
   if (pcap_set_buffer_size(handle, 32 * 1024) != 0) {
-    syslog2(LOG_ALERT, "Unable to set buffer size for %s\n", device);
+    syslog2(LOG_ALERT, "Unable to set buffer size for %s", device);
     pcap_close(handle);
     return NULL;
   }
@@ -169,7 +169,7 @@ pcap_t *dhcp_pcap_open_live(const char *device) {
   //this mode is not working with small buffer size error: can't mmap rx ring: Invalid argument
   /* Set immediate mode */
   if (pcap_set_immediate_mode(handle, 1) != 0) {
-    syslog2(LOG_ALERT, "Unable to set immediate mode for %s\n", device);
+    syslog2(LOG_ALERT, "Unable to set immediate mode for %s", device);
     pcap_close(handle);
     return NULL;
   }
@@ -178,27 +178,27 @@ pcap_t *dhcp_pcap_open_live(const char *device) {
 
   // Set non-blocking mode
   if (pcap_setnonblock(handle, 1, error_buffer) == -1) {
-    syslog2(LOG_CRIT, "error: Could not set non-blocking mode for device %s: %s\n", device, error_buffer);
+    syslog2(LOG_CRIT, "error: Could not set non-blocking mode for device %s: %s", device, error_buffer);
     pcap_close(handle);
     return NULL;
   }
 
   /* Activate the pcap handle */
   if (pcap_activate(handle) != 0) {
-    syslog2(LOG_CRIT, "error: Could not activate pcap handle for device %s: %s\n", device, pcap_geterr(handle));
+    syslog2(LOG_CRIT, "error: Could not activate pcap handle for device %s: %s", device, pcap_geterr(handle));
     pcap_close(handle);
     return NULL;
   }
 
   /* Compile and apply the filter */
   if (pcap_compile(handle, &fp, filter_exp, 1, net) == -1) {
-    syslog2(LOG_CRIT, "error: Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
+    syslog2(LOG_CRIT, "error: Couldn't parse filter %s: %s", filter_exp, pcap_geterr(handle));
     pcap_close(handle);
     return NULL;
   }
 
   if (pcap_setfilter(handle, &fp) == -1) {
-    syslog2(LOG_CRIT, "error: Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
+    syslog2(LOG_CRIT, "error: Couldn't install filter %s: %s", filter_exp, pcap_geterr(handle));
     pcap_close(handle);
     return NULL;
   }
