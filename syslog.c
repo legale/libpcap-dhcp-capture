@@ -34,8 +34,8 @@ static inline const char *strprio(int pri) {
 static pthread_spinlock_t spinlock;
 
 static atomic_int initialized = 0;
-static time_t offset_seconds;
-static long timezone_offset;
+static time_t offset_seconds_global;
+static long timezone_offset_global;
 
 static void initialize_time_cache() {
   if (atomic_exchange(&initialized, 1) == 0) {
@@ -44,11 +44,11 @@ static void initialize_time_cache() {
     clock_gettime(CLOCK_REALTIME, &startup_time_realtime);
     clock_gettime(CLOCK_MONOTONIC, &startup_time_monotonic);
 
-    offset_seconds = startup_time_realtime.tv_sec - startup_time_monotonic.tv_sec;
+    offset_seconds_global = startup_time_realtime.tv_sec - startup_time_monotonic.tv_sec;
 
     struct tm local_tm;
     localtime_r(&startup_time_realtime.tv_sec, &local_tm);
-    timezone_offset = local_tm.tm_gmtoff;
+    timezone_offset_global = local_tm.tm_gmtoff;
 
     pthread_spin_init(&spinlock, PTHREAD_PROCESS_PRIVATE);
   }
@@ -65,8 +65,8 @@ static inline void get_current_time(struct timespec *ts, struct tm *tm_info) {
   clock_gettime(CLOCK_MONOTONIC_COARSE, ts);
 
   if (__builtin_expect(cached_offset == 0, 0)) {
-    cached_offset = offset_seconds;
-    cached_tz_offset = timezone_offset;
+    cached_offset = offset_seconds_global;
+    cached_tz_offset = timezone_offset_global;
   }
 
   time_t current_timestamp = cached_offset + ts->tv_sec + cached_tz_offset;

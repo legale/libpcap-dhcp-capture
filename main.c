@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <errno.h>
 #include <netinet/if_ether.h>
 #include <netinet/in.h>
 #include <pcap.h>
@@ -7,6 +8,7 @@
 #include <stdlib.h>
 
 #include "pcap_dhcp.h"
+#include "syslog.h"
 
 /* cli arguments parse macro and functions */
 #define NEXT_ARG()                         \
@@ -49,8 +51,6 @@ static bool matches(const char *prefix, const char *string) {
   return !*prefix;
 }
 
-
-
 static const struct tok bootp_op_values[] = {
     {BOOTPREQUEST, "Request"},
     {BOOTPREPLY, "Reply"},
@@ -91,7 +91,7 @@ static void print_packet_info(const u_char *packet, struct pcap_pkthdr packet_h,
   const nd_byte *bp_vend_data = bootp->bp_vend;
   size_t bp_vend_len = calc_vendor_specific_size(bootp);
   const char *hostname = parse_vendor_specific_option_12(bp_vend_data, bp_vend_len);
-  if(hostname){
+  if (hostname) {
     printf("hostname: %s\n", hostname);
     free((void *)hostname);
   }
@@ -137,9 +137,15 @@ int main(int argc, char *argv[]) {
     FD_ZERO(&read_fds);
     FD_SET(pcap_get_selectable_fd(handle), &read_fds);
 
-    int result = select(max_fd, &read_fds, NULL, NULL, NULL);
-    if (result == -1) {
-      perror("select");
+    int ret = select(max_fd, &read_fds, NULL, NULL, NULL);
+    if (ret == 0) {
+      continue;
+    } else if (ret < 0) {
+      if (errno == EINTR) {
+        syslog2(LOG_WARNING, "select EINTR");
+        break;
+      }
+      syslog2(LOG_ERR, "select error=%s", strerror(errno));
       break;
     }
 
