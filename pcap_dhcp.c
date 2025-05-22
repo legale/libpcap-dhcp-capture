@@ -55,14 +55,14 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
   int cnt = 0;
   while (ntohs(*(uint16_t *)ether_type) == ETHERTYPE_VLAN) {
     if (cnt++ > 2) {
-      syslog2(LOG_DEBUG, "vlan headers > 2");
+      //syslog2(LOG_DEBUG, "vlan headers > 2");
     }
     // struct vlan_header *vlan_h = (struct vlan_header *)eth_h;
-    // syslog2(LOG_DEBUG, "VLAN ID 0x%04X", ntohs(vlan_h->vlanid));
+    // //syslog2(LOG_DEBUG, "VLAN ID 0x%04X", ntohs(vlan_h->vlanid));
     ethernet_h_len += 4;
     ether_type += 4;
   }
-  // syslog2(LOG_DEBUG, "ether_type 0x%04X", ntohs(*ether_type));
+  // //syslog2(LOG_DEBUG, "ether_type 0x%04X", ntohs(*ether_type));
 
   int ip_h_len;
   // int udp_len; //for debug
@@ -77,9 +77,9 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
   ip_h_len = ip_h_len * 4;
 
   uint32_t total_headers_size = ethernet_h_len + ip_h_len + udp_h_len;
-  // syslog2(LOG_DEBUG, "Size of all headers combined: %d bytes", total_headers_size);
+  // //syslog2(LOG_DEBUG, "Size of all headers combined: %d bytes", total_headers_size);
   if (total_headers_size > h->caplen) {
-    // syslog2(LOG_DEBUG, "Total headers size (%d) > packet captured size (%d). Skipping...", total_headers_size, h->caplen);
+    // //syslog2(LOG_DEBUG, "Total headers size (%d) > packet captured size (%d). Skipping...", total_headers_size, h->caplen);
     return;
   }
 
@@ -89,7 +89,7 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
      Protocol is always the 10th byte of the IP header */
   u_char protocol = ip_h[9];
   if (protocol != IPPROTO_UDP) {
-    // syslog2(LOG_DEBUG, "%d Not a UDP packet. Skipping...", protocol);
+    // //syslog2(LOG_DEBUG, "%d Not a UDP packet. Skipping...", protocol);
     return;
   }
 
@@ -104,18 +104,18 @@ void dhcp_packet_handler(uint8_t *args, const struct pcap_pkthdr *h, const uint8
   */
 
   // udp_len = ntohs(*(uint16_t *)(udp_h + 4));
-  // syslog2(LOG_DEBUG, "UDP header + data length in bytes: %d", udp_len);
+  // //syslog2(LOG_DEBUG, "UDP header + data length in bytes: %d", udp_len);
 
   /* Find the payload offset */
   payload_len = h->caplen -
                 (ethernet_h_len + ip_h_len + udp_h_len);
-  // syslog2(LOG_DEBUG, "Payload size: %zu bytes", payload_len);
+  // //syslog2(LOG_DEBUG, "Payload size: %zu bytes", payload_len);
   payload = p + total_headers_size;
   if (payload_len < sizeof(struct bootp)) {
-    // syslog2(LOG_DEBUG, "payload size(%zu) < bootp structure size(%u). Skipping...", payload_len, (uint32_t)sizeof(struct bootp));
+    // //syslog2(LOG_DEBUG, "payload size(%zu) < bootp structure size(%u). Skipping...", payload_len, (uint32_t)sizeof(struct bootp));
     return;
   }
-  syslog2(LOG_DEBUG, "Memory address where payload begins: %p", payload);
+  //syslog2(LOG_DEBUG, "Memory address where payload begins: %p", payload);
 
   pcap_dhcp_user_s *user = (pcap_dhcp_user_s *)args;
   (*user->callback)(p, *h, payload, user->callback_arg);
