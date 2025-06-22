@@ -57,7 +57,8 @@ int setlogmask2(int log_level) {
   return setlogmask(log_level);
 }
 
-void setup_syslog2(int log_level, bool set_log_syslog) {
+void setup_syslog2(const char *ident, int log_level, bool set_log_syslog) {
+  openlog(ident, LOG_CONS | LOG_NDELAY, LOG_LOCAL1);
   if (!syslog_initialized) {
     initialize_time_cache();
   }
@@ -88,11 +89,21 @@ static void get_current_time(struct timespec *ts, struct tm *tm_info) {
 void syslog2_(int pri, const char *func, const char *filename, int line, const char *fmt, bool add_nl, ...) {
   if (!(cached_mask & LOG_MASK(pri))) return;
 
+  // 1. Объявляем статическую __thread переменную.
+  //    Она будет равна 0 при первом входе в функцию для каждого нового потока.
+  static __thread pid_t cached_tid = 0;
+
+  // 2. Проверяем, кешировали ли мы уже TID для этого потока.
+  if (cached_tid == 0) {
+    // Если нет (первый вызов в этом потоке), делаем дорогой системный
+    // вызов ОДИН РАЗ и сохраняем результат в TLS-переменную.
+    cached_tid = syscall(SYS_gettid);
+  }
+
   char msg[32768];
 
   struct timespec ts;
   struct tm tm_info;
-  pid_t tid = syscall(SYS_gettid);
 
   va_list args;
   va_start(args, add_nl);
@@ -101,9 +112,9 @@ void syslog2_(int pri, const char *func, const char *filename, int line, const c
 
   if (likely(log_syslog)) {
     if (add_nl) {
-      syslog(pri, "[%d] %s:%d: %s: %s\n", tid, filename, line, func, msg);
+      syslog(pri, "[%d] %s:%d: %s: %s\n", cached_tid, filename, line, func, msg);
     } else {
-      syslog(pri, "[%d] %s:%d: %s: %s", tid, filename, line, func, msg);
+      syslog(pri, "[%d] %s:%d: %s: %s", cached_tid, filename, line, func, msg);
     }
   } else {
     char timebuf[64];
@@ -112,9 +123,9 @@ void syslog2_(int pri, const char *func, const char *filename, int line, const c
             tm_info.tm_mday, tm_info.tm_mon + 1, tm_info.tm_year + 1900,
             tm_info.tm_hour, tm_info.tm_min, tm_info.tm_sec, ts.tv_nsec / 1000000);
     if (add_nl) {
-      printf("[%s] %s [%d] %s:%d: %s: %s\n", timebuf, strprio(pri), tid, filename, line, func, msg);
+      printf("[%s] %s [%d] %s:%d: %s: %s\n", timebuf, strprio(pri), cached_tid, filename, line, func, msg);
     } else {
-      printf("[%s] %s [%d] %s:%d: %s: %s", timebuf, strprio(pri), tid, filename, line, func, msg);
+      printf("[%s] %s [%d] %s:%d: %s: %s", timebuf, strprio(pri), cached_tid, filename, line, func, msg);
     }
   }
 }
@@ -141,7 +152,6 @@ void syslog2_printf_(int pri, const char *func, const char *filename, int line, 
 
 void debug(const char *fmt, ...) {
 #ifdef DEBUG
-  char str[256];
   va_list ap;
   va_start(ap, fmt);
   vprintf(fmt, ap);

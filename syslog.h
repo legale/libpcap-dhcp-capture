@@ -34,13 +34,23 @@ extern int cached_mask;
 #define FUNC_START_DEBUG                      \
   do {                                        \
     if ((cached_mask & LOG_MASK(LOG_INFO))) { \
+      SET_CURRENT_FUNCTION();                 \
+      syslog2(LOG_INFO, "");                  \
+    }                                         \
+  } while (0)
+#endif
+
+#ifndef FUNC_START_DEBUG_NO_BT
+#define FUNC_START_DEBUG_NO_BT                \
+  do {                                        \
+    if ((cached_mask & LOG_MASK(LOG_INFO))) { \
       syslog2(LOG_INFO, "");                  \
     }                                         \
   } while (0)
 #endif
 
 int setlogmask2(int log_level);
-void setup_syslog2(int log_level, bool set_log_syslog);
+void setup_syslog2(const char *ident, int log_level, bool set_log_syslog);
 void syslog2_(int pri, const char *func, const char *filename, int line, const char *fmt, bool add_nl, ...);
 void syslog2_printf_(int pri, const char *func, const char *filename, int line, const char *fmt, ...);
 int clock_gettime_fast(struct timespec *ts, bool coarse);
